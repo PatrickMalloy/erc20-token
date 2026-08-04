@@ -7,11 +7,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract EasyWayToken is ERC20Capped, ERC20Burnable, Ownable {
 
-  // Max Capped Supply of 1 Billion Tokens
+  // Max Capped Supply of _maxSupply
   // Initial Mint Supply of 100 Million tokens
-  constructor(address initialOwner, uint256 _maxSupply)
+  constructor(address _owner, uint256 _maxSupply)
     ERC20("EasyWayToken", "EWT") 
-    Ownable(initialOwner)
+    Ownable(_owner)
     ERC20Capped(_maxSupply * 10 ** decimals())
     {
       _mint(msg.sender, 100_000_000 * 10 ** decimals());

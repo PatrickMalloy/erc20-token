@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface ERC20Interface {
+interface IERC20 {
   function totalSupply() external view returns (uint256 supply);
   function balanceOf(address _owner) external view returns (uint256 balance);
   function transfer(address _to, uint256 _value) external returns (bool success);
@@ -13,7 +13,7 @@ interface ERC20Interface {
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-contract HardWayToken is ERC20Interface {
+contract HardWayToken is IERC20 {
     string public name;
     string public symbol;
     uint8 public decimals;
@@ -22,31 +22,42 @@ contract HardWayToken is ERC20Interface {
     address public owner;  // Address of the token contract owner
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Only the owner can call this function");
+        require(msg.sender == owner, "Only the owner can call this function.");
         _;
     }
 
-    mapping(address => uint256) private balances;
-    mapping(address => mapping(address => uint256)) private allowed;
+    mapping(address => uint256) public balances;
+    mapping(address => mapping(address => uint256)) public allowance;
 
     //event Transfer(address indexed from, address indexed to, uint256 value);
     //event Approval(address indexed owner, address indexed spender, uint256 value);
     event Mint(address indexed to, uint256 value);
     event Burn(address indexed from, uint256 value);
 
-    constructor() {
-        name = "HardWayToken";
-        symbol = "HWT";
-        decimals = 18;  // You can adjust the number of decimals according to your requirements
-        owner = msg.sender;
-        _maxSupply = 1_000_000_000 * 10 ** decimals; // Maximum supply is 1 billion tokens
-        _totalSupply = 1_000_000;  // The total supply is initially set to 1 million tokens
-        balances[owner] = _totalSupply;
-        emit Transfer(address(0), owner, _totalSupply);
+    /**
+     * @dev Sets the values for {initialSupply} and {maxSupply}.
+     *
+     * maxSupply value is immutable: it can only be set once during
+     * construction.
+     */
+    constructor(uint256 initialSupply, uint256 maxSupply) {
+      require(initialSupply <= maxSupply, "ERROR: initialSupply must be <= maxSupply!");
+      name = "HardWayToken";
+      symbol = "HWT";
+      decimals = 18;  // Consistent with ETH
+      owner = msg.sender;
+      _totalSupply = initialSupply;  
+      balances[owner] = _totalSupply; // The total supply is initially owned by owner
+      _maxSupply = maxSupply;
+      emit Transfer(address(0), owner, _totalSupply);
     }
 
     function totalSupply() public view returns (uint256) {
       return _totalSupply;
+    }
+
+    function maximumSupply() public view returns (uint256) {
+      return _maxSupply;
     }
 
     function balanceOf(address account) public view returns (uint256) {
@@ -85,35 +96,46 @@ contract HardWayToken is ERC20Interface {
 
     function transfer(address to, uint256 value) public returns (bool) {
         require(to != address(0), "ERC20: transfer to the zero address");
-        require(value <= balances[msg.sender], "ERC20: insufficient balance");
+        require(balances[msg.sender] >= value, "ERC20: insufficient balance");
 
-        balances[msg.sender] -= value;
-        balances[to] += value;
+        address from = msg.sender;
 
-        emit Transfer(msg.sender, to, value);
+        //balances[from] -= value;
+        //balances[to] += value;
+
+        //emit Transfer(from, to, value);
+
+        _transfer(from, to, value);
         return true;
     }
 
     function transferFrom(address from, address to, uint256 value) public returns (bool) {
         require(to != address(0), "ERC20: transfer to the zero address");
         require(value <= balances[from], "ERC20: insufficient balance");
-        require(value <= allowed[from][msg.sender], "ERC20: insufficient allowance");
+        require(value <= allowance[from][msg.sender], "ERC20: insufficient allowance");
 
-        balances[from] -= value;
-        balances[to] += value;
-        allowed[from][msg.sender] -= value;
+        allowance[from][msg.sender] -= value;
+        //balances[from] -= value;
+        //balances[to] += value;
 
-        emit Transfer(from, to, value);
+        //emit Transfer(from, to, value);
+        _transfer(from, to, value);
         return true;
+    }
+
+    function _transfer(address from, address to, uint256 value) internal returns (bool) {
+      balances[from] -= value;
+      balances[to] += value;
+
+      emit Transfer(from, to, value);
+      return true;
     }
 
     function approve(address spender, uint256 value) public returns (bool) {
-        allowed[msg.sender][spender] = value;
+        require(spender != address(0), "Need a valid spender");
+
+        allowance[msg.sender][spender] = value;
         emit Approval(msg.sender, spender, value);
         return true;
-    }
-
-    function allowance(address account, address spender) public view returns (uint256) {
-        return allowed[account][spender];
     }
 }
